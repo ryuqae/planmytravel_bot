@@ -4,6 +4,15 @@ from utils import send_action, facts_to_str
 from chat import MyTravelAgent
 from dotenv import load_dotenv
 from emoji import emojize
+import argparse
+
+parser = argparse.ArgumentParser(description="Process some integers.")
+parser.add_argument(
+    "--MODEL", default="gpt-3.5-turbo", required=False, help="Specify the GPT version"
+)
+args = parser.parse_args()
+
+MODEL = args.MODEL
 
 import time
 
@@ -30,7 +39,6 @@ load_dotenv(verbose=True)
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
-
 # Enable logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -51,7 +59,7 @@ party = emojize(":party_popper:", use_aliases=True)
 
 
 # Create an agent with a given template: template_01
-agent = MyTravelAgent("template_01")
+agent = MyTravelAgent(prompt_file="template_01", model=MODEL)
 
 
 send_typing_action = send_action(ChatAction.TYPING)
@@ -59,7 +67,8 @@ send_typing_action = send_action(ChatAction.TYPING)
 
 ######################
 
-START, EMOJI, POLITE, VERBOSE, PLAN = range(5)
+START, CUSTOMIZE, EMOJI, POLITE, VERBOSE, WARM, DONE, PLAN = range(8)
+# START, CUSTOMIZE, PLAN = range(3)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -70,7 +79,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         [
             InlineKeyboardButton(
                 text=f"{good} 나만의 챗봇 만들기 {good}", callback_data="customize"
-            ),
+            )
+        ],
+        [
             InlineKeyboardButton(
                 text=f"{siren} 여행계획 세우기 {siren}", callback_data="plan"
             ),
@@ -82,23 +93,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         text="안녕하세요, 당신의 여행을 도와주는 챗봇🤖입니다. 무엇을 할까요?", reply_markup=markup
     )
 
-    return START
+    return CUSTOMIZE
 
 
-async def callback_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def customize(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     user = update.effective_user
     await query.answer()
 
     if query.data == "customize":
-        logger.info(query.data)
+        logger.info(f"callback_start: {query.data}")
         await query.edit_message_text(text=f"좋아요! 나만의 챗봇을 만들어볼까요?{good}")
+
+        options = [InlineKeyboardButton(text=f"> 시작하기 <", callback_data="emoji")]
 
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
-            text=f"지금부터 {user.first_name}님이 선호하는 챗봇으로 만들어주세요!",
+            text=f"지금부터 {user.first_name}님이 선호하는 챗봇으로 만들어보세요!",
+            reply_markup=InlineKeyboardMarkup([options]),
         )
-
         return EMOJI
 
     elif query.data == "plan":
@@ -113,36 +126,39 @@ async def callback_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return PLAN
 
 
-async def emoji_tf(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def emoji(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
+
+    logger.info(f"emoji_tf: {query.data}")
 
     options = [
         [
             InlineKeyboardButton(
-                text=f"{good}이모티콘도 사용해주세요.{good}", callback_data="emoji_on"
-            ),
-            InlineKeyboardButton(text=f"텍스트로만 대답해주세요.", callback_data="emoji_off"),
+                text=f"{good}이모티콘도 적절히 사용해주세요.{good}", callback_data="emoji_on"
+            )
         ],
+        [InlineKeyboardButton(text=f"텍스트로만 대답해주세요.", callback_data="emoji_off")],
     ]
 
     # Buttons' layout markup
     reply_markup = InlineKeyboardMarkup(options)
 
     # Message with the buttons
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
+    await query.edit_message_text(
+        # chat_id=update.effective_chat.id,
         text="이모티콘도 사용해볼까요?",
         reply_markup=reply_markup,
     )
 
-    return POLITE
+    return VERBOSE
 
 
 async def emoji_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
+    await query.answer()
 
-    logger.info("emoji_callback")
+    logger.info(f"emoji_callback: {query.data}")
 
     if query.data == "emoji_on":
         context.user_data["emoji"] = True
@@ -150,63 +166,20 @@ async def emoji_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     elif query.data == "emoji_off":
         context.user_data["emoji"] = False
         await query.edit_message_text(text=f"네, 텍스트로만 대답할게요{siren}")
-    # logger.info(context.user_data["emoji"])
 
-    return POLITE
-
-
-async def polite_tf(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    options = [
-        [
-            InlineKeyboardButton(
-                text=f"{good} 존댓말로 공손하게 {good}", callback_data="polite_on"
-            ),
-            InlineKeyboardButton(
-                text=f"{siren} 반말로 친근하게 {siren}", callback_data="polite_off"
-            ),
-        ],
-    ]
-
-    # Buttons' layout markup
-    reply_markup = InlineKeyboardMarkup(options)
-
-    # Message with the buttons
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text="이렇게 대답해주세요",
-        reply_markup=reply_markup,
-    )
-    return VERBOSE
+    logger.info(context.user_data)
 
 
-async def polite_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["polite"] = None
+async def verbose(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
 
-    if query.data == "polite_on":
-        context.user_data["polite"] = "존댓말로 공손하게 대답해주세요"
-        await query.edit_message_text(text=f"존댓말로 공손하게 대답해드려요{good}")
-    elif query.data == "polite_off":
-        context.user_data["polite"] = "반말로 친근하게 대답해줘"
-        await query.edit_message_text(text=f"반말로 친근하게 대답할게{siren}")
-
-
-async def verbose_tf(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-
-    logger.info(f"verbose_tf: {query.data}")
+    await emoji_callback(update, context)
+    logger.info(f"polite_tf: {query.data}")
 
     options = [
-        [
-            InlineKeyboardButton(
-                text=f"{good} 최대한 자세하고 길게 대답해주세요 {good}", callback_data="verbose_on"
-            ),
-            InlineKeyboardButton(
-                text=f"{siren} 간결하고 짧게 대답해주세요 {siren}", callback_data="verbose_off"
-            ),
-        ],
+        [InlineKeyboardButton(text=f"최대한 자세하고 길게 대답해주세요", callback_data="verbose_on")],
+        [InlineKeyboardButton(text=f"간결하고 짧게 대답해주세요", callback_data="verbose_off")],
     ]
 
     # Buttons' layout markup
@@ -219,10 +192,14 @@ async def verbose_tf(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         reply_markup=reply_markup,
     )
 
+    return POLITE
+
 
 async def verbose_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
+
+    logger.info(f"verbose_callback: {query.data}")
 
     if query.data == "verbose_on":
         context.user_data["verbose"] = True
@@ -231,6 +208,126 @@ async def verbose_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     elif query.data == "verbose_off":
         context.user_data["verbose"] = False
         await query.edit_message_text(text=f"네, 간결하게 대답할게요{siren}")
+
+    logger.info(context.user_data)
+
+
+async def polite(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+
+    await verbose_callback(update, context)
+
+    logger.info(f"polite_tf: {query.data}")
+
+    options = [
+        [
+            InlineKeyboardButton(
+                text=f"{good} 존댓말로 공손하게 {good}", callback_data="polite_on"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                text=f"{siren} 반말로 친근하게 {siren}", callback_data="polite_off"
+            )
+        ],
+    ]
+
+    # Buttons' layout markup
+    reply_markup = InlineKeyboardMarkup(options)
+
+    # Message with the buttons
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="친근하게 반말로? 아니면 공손하게 존댓말로?",
+        reply_markup=reply_markup,
+    )
+    return WARM
+
+
+async def polite_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    logger.info(f"polite_callback: {query.data}")
+
+    if query.data == "polite_on":
+        context.user_data["polite"] = True
+        await query.edit_message_text(text=f"존댓말로 공손하게 대답해드릴게요{good}")
+
+    elif query.data == "polite_off":
+        context.user_data["polite"] = False
+        await query.edit_message_text(text=f"반말로 친근하게 대답할게{good}")
+
+    logger.info(context.user_data)
+
+
+async def warm(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+
+    await polite_callback(update, context)
+
+    logger.info(f"warm_tf: {query.data}")
+
+    options = [
+        [InlineKeyboardButton(text=f"따스하게", callback_data="warm_on")],
+        [InlineKeyboardButton(text=f"차갑게", callback_data="warm_off")],
+    ]
+
+    # Buttons' layout markup
+    reply_markup = InlineKeyboardMarkup(options)
+
+    # Message with the buttons
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="대화의 온도는?",
+        reply_markup=reply_markup,
+    )
+    return DONE
+
+
+async def warm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    logger.info(f"warm_callback: {query.data}")
+
+    if query.data == "warm_on":
+        context.user_data["warm"] = True
+        await query.edit_message_text(text=f"따뜻한 말투로 대답해 드릴게요{good}")
+
+    elif query.data == "warm_off":
+        context.user_data["warm"] = False
+        await query.edit_message_text(text=f"차가운 말투로 대답해 드릴게요{good}")
+
+    logger.info(context.user_data)
+
+
+@send_typing_action
+async def done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Display the gathered info and end the conversation."""
+
+    query = update.callback_query
+    await query.answer()
+
+    await warm_callback(update, context)
+    user = update.effective_user
+
+    logger.info("User %s done the conversation.", user.first_name)
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"{user.first_name}님의 챗봇이 완성되었습니다!{good} 이제 저와 대화를 시작해볼까요?{party}",
+    )
+    logger.info(context.user_data)
+
+    # 수집한 데이터로 챗봇 생성
+    sample = MyTravelAgent(prompt_file="template_01", **context.user_data)
+    logger.info(
+        f"verbose: {sample.verbose}, emoji: {sample.emoji}, polite: {sample.polite}, warm: {sample.warm}"
+    )
+    sample.set_style()
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"{sample.response('우리 인사 나눌까? 소개 좀 부탁해', last_n=5)}",
+    )
 
     return PLAN
 
@@ -247,18 +344,25 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 @send_typing_action
 async def response(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    agent.emoji = context.user_data["emoji"]
+    agent.polite = context.user_data["polite"]
+    agent.verbose = context.user_data["verbose"]
+    agent.warm = context.user_data["warm"]
+
+    agent.set_style()
+
+    logger.info(agent.style)
+
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=agent.response(update.message.text, last_n=5),
+        text=agent.response(update.message.text, last_n=10),
     )
     return PLAN
 
 
 async def show_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Display the gathered info."""
-    await update.message.reply_text(
-        f"This is what you already told me: {facts_to_str(context.user_data)}"
-    )
+    await update.message.reply_text(f"수집된 정보: {facts_to_str(context.user_data)}")
 
 
 def main() -> None:
@@ -267,10 +371,12 @@ def main() -> None:
     conversation = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
         states={
-            START: [CallbackQueryHandler(callback_start)],
-            EMOJI: [CallbackQueryHandler(emoji_tf)],
-            POLITE: [CallbackQueryHandler(polite_tf)],
-            VERBOSE: [CallbackQueryHandler(verbose_tf)],
+            CUSTOMIZE: [CallbackQueryHandler(customize)],
+            EMOJI: [CallbackQueryHandler(emoji)],
+            POLITE: [CallbackQueryHandler(polite)],
+            VERBOSE: [CallbackQueryHandler(verbose)],
+            WARM: [CallbackQueryHandler(warm)],
+            DONE: [CallbackQueryHandler(done)],
             PLAN: [MessageHandler(filters.TEXT & (~filters.COMMAND), response)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
