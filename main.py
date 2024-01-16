@@ -12,7 +12,10 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-MODEL = args.MODEL
+# MODEL = args.MODEL
+MODEL = "gpt-4-1106-preview"
+
+TEMPLATE = "template_03"
 
 import time
 
@@ -58,12 +61,7 @@ minus = emojize(":minus:", use_aliases=True)
 party = emojize(":party_popper:", use_aliases=True)
 
 
-# Create an agent with a given template: template_01
-agent = MyTravelAgent(prompt_file="template_01", model=MODEL)
-
-
 send_typing_action = send_action(ChatAction.TYPING)
-
 
 ######################
 
@@ -74,6 +72,21 @@ START, CUSTOMIZE, EMOJI, POLITE, VERBOSE, WARM, DONE, PLAN = range(8)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
     logger.info("User %s started the conversation.", user.first_name)
+
+    # Create an agent with a given template
+    agent = MyTravelAgent(
+        prompt_file=TEMPLATE, user=update.effective_chat.id, model=MODEL
+    )
+    logger.info(f"A new agent was created for {agent.user}")
+    logger.info(f"A default chat style: {agent.style}")
+
+    context.user_data["agent"] = agent
+    context.user_data["style"] = {
+        "emoji": False,
+        "polite": False,
+        "verbose": False,
+        "warm": False,
+    }
 
     options = [
         [
@@ -122,6 +135,9 @@ async def customize(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             chat_id=update.effective_chat.id,
             text=f"{user.first_name}님이 계획하고자 하는 여행에 대해서 알려주세요!",
         )
+        # without customizing
+
+        logger.info(f"without customized: {context.user_data}")
 
         return PLAN
 
@@ -161,10 +177,10 @@ async def emoji_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     logger.info(f"emoji_callback: {query.data}")
 
     if query.data == "emoji_on":
-        context.user_data["emoji"] = True
+        context.user_data["style"]["emoji"] = True
         await query.edit_message_text(text=f"좋아요! 이모티콘도 사용해볼게요{good}")
     elif query.data == "emoji_off":
-        context.user_data["emoji"] = False
+        context.user_data["style"]["emoji"] = False
         await query.edit_message_text(text=f"네, 텍스트로만 대답할게요{siren}")
 
     logger.info(context.user_data)
@@ -202,11 +218,11 @@ async def verbose_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     logger.info(f"verbose_callback: {query.data}")
 
     if query.data == "verbose_on":
-        context.user_data["verbose"] = True
+        context.user_data["style"]["verbose"] = True
         await query.edit_message_text(text=f"좋아요! 최대한 자세하게 대답할게요{good}")
 
     elif query.data == "verbose_off":
-        context.user_data["verbose"] = False
+        context.user_data["style"]["verbose"] = False
         await query.edit_message_text(text=f"네, 간결하게 대답할게요{siren}")
 
     logger.info(context.user_data)
@@ -250,11 +266,11 @@ async def polite_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     logger.info(f"polite_callback: {query.data}")
 
     if query.data == "polite_on":
-        context.user_data["polite"] = True
+        context.user_data["style"]["polite"] = True
         await query.edit_message_text(text=f"존댓말로 공손하게 대답해드릴게요{good}")
 
     elif query.data == "polite_off":
-        context.user_data["polite"] = False
+        context.user_data["style"]["polite"] = False
         await query.edit_message_text(text=f"반말로 친근하게 대답할게{good}")
 
     logger.info(context.user_data)
@@ -290,11 +306,11 @@ async def warm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     logger.info(f"warm_callback: {query.data}")
 
     if query.data == "warm_on":
-        context.user_data["warm"] = True
+        context.user_data["style"]["warm"] = True
         await query.edit_message_text(text=f"따뜻한 말투로 대답해 드릴게요{good}")
 
     elif query.data == "warm_off":
-        context.user_data["warm"] = False
+        context.user_data["style"]["warm"] = False
         await query.edit_message_text(text=f"차가운 말투로 대답해 드릴게요{good}")
 
     logger.info(context.user_data)
@@ -316,17 +332,25 @@ async def done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         text=f"{user.first_name}님의 챗봇이 완성되었습니다!{good} 이제 저와 대화를 시작해볼까요?{party}",
     )
     logger.info(context.user_data)
+    agent = context.user_data["agent"]
+    agent.style = context.user_data["style"]
+    agent.set_style()
 
     # 수집한 데이터로 챗봇 생성
-    sample = MyTravelAgent(prompt_file="template_01", **context.user_data)
-    logger.info(
-        f"verbose: {sample.verbose}, emoji: {sample.emoji}, polite: {sample.polite}, warm: {sample.warm}"
-    )
-    sample.set_style()
+    # sample = MyTravelAgent(
+    #     prompt_file=TEMPLATE,
+    #     model=MODEL,
+    #     user=update.effective_chat.id,
+    #     # **context.user_data["style"],
+    # )
+    # logger.info(f"sample chat style before: {sample.style}")
+    # sample.set_style()
+
+    # logger.info(f"sample chat style: {sample.style}")
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=f"{sample.response('우리 인사 나눌까? 소개 좀 부탁해', last_n=5)}",
+        text=f"{agent.response('우리 인사 나눌까? 소개 좀 부탁해', last_n=5)}",
     )
 
     return PLAN
@@ -338,18 +362,18 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info("User %s canceled the conversation.", user.first_name)
 
     await update.message.reply_text(f"{user.first_name}님의 대화를 종료합니다! 다음에 또 만나요!")
+    agent = context.user_data["agent"]
+
+    context.user_data.clear()
+
+    agent.messages = []
 
     return ConversationHandler.END
 
 
 @send_typing_action
 async def response(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    agent.emoji = context.user_data["emoji"]
-    agent.polite = context.user_data["polite"]
-    agent.verbose = context.user_data["verbose"]
-    agent.warm = context.user_data["warm"]
-
-    agent.set_style()
+    agent = context.user_data["agent"]
 
     logger.info(agent.style)
 
@@ -367,6 +391,7 @@ async def show_data(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 def main() -> None:
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    # Create an agent with a given template: template_01
 
     conversation = ConversationHandler(
         entry_points=[CommandHandler("start", start)],
@@ -381,6 +406,8 @@ def main() -> None:
         },
         fallbacks=[CommandHandler("cancel", cancel)],
         allow_reentry=True,
+        per_chat=True,
+        per_user=True,
     )
 
     application.add_handler(conversation)
