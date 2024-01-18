@@ -15,7 +15,7 @@ args = parser.parse_args()
 # MODEL = args.MODEL
 MODEL = "gpt-4-1106-preview"
 
-TEMPLATE = "template_03"
+TEMPLATE = "template_04"
 
 import time
 
@@ -46,6 +46,8 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
+
+
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
