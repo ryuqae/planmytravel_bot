@@ -2,6 +2,7 @@ import openai
 import os
 import dotenv
 import logging
+from datetime import datetime as time
 
 dotenv.load_dotenv()
 
@@ -14,7 +15,7 @@ logging.basicConfig(
 )
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
-logger.propagate = False
+# logger.propagate = False
 
 
 class MyTravelAgent:
@@ -37,12 +38,14 @@ class MyTravelAgent:
         self.presence_penalty = 0.6
         self.max_tokens = 120
         self.style = style
-        chatlogger = logging.FileHandler(f"chatlog/{user}.log")
-        chatlogger.setLevel(logging.WARNING)
-        chatlogger.setFormatter(
-            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        )
-        logger.addHandler(chatlogger)
+        # chatlogger = logging.FileHandler(f"chatlog/{user}.log")
+        # chatlogger.setLevel(logging.WARNING)
+        # chatlogger.setFormatter(
+        #     logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        # )
+        # logger.addHandler(chatlogger)
+
+        self.logfile = open(f"chatlog/{user}.log", "a")
 
     def read_prompt(self, prompt_file):
         try:
@@ -92,7 +95,10 @@ class MyTravelAgent:
         self.messages.append({"role": "user", "content": content})
 
         logger.info(self.messages)
-        logger.warning({"role": "user", "content": content})
+        # logger.warning({"role": "user", "content": content})
+        with open(f"chatlog/{self.user}.log", "a") as f:
+            f.write(f"{time.now()} - {'user':<9}: {content}\n")
+        # self.logfile.write(f"{time.now()} - user: {content}")
 
         response = openai.chat.completions.create(
             model=model,
@@ -109,9 +115,14 @@ class MyTravelAgent:
             {"role": "assistant", "content": response.choices[0].message.content}
         )
 
-        logger.warning(
-            {"role": "assistant", "content": response.choices[0].message.content}
-        )
+        # self.logfile.write(
+        #     f"{time.now()} - assistant: {response.choices[0].message.content}"
+        # )
+        with open(f"chatlog/{self.user}.log", "a") as f:
+            f.write(
+                f"{time.now()} - {'assistant':<9}: {response.choices[0].message.content}\n"
+            )
+
         if len(self.messages) > 8:
             self.messages = []
             content = (

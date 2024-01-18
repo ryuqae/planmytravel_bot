@@ -17,7 +17,6 @@ MODEL = "gpt-4-1106-preview"
 
 TEMPLATE = "template_04"
 
-import time
 
 from telegram import (
     InlineKeyboardButton,
@@ -350,10 +349,10 @@ async def done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     # logger.info(f"sample chat style: {sample.style}")
 
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=f"{agent.response('우리 인사 나눌까? 소개 좀 부탁해', last_n=5)}",
-    )
+    # await context.bot.send_message(
+    #     chat_id=update.effective_chat.id,
+    #     text=f"{agent.response('우리 인사 나눌까? 소개 좀 부탁해', last_n=5)}",
+    # )
 
     return PLAN
 
