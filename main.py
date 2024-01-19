@@ -15,7 +15,7 @@ args = parser.parse_args()
 # MODEL = args.MODEL
 MODEL = "gpt-4-1106-preview"
 
-TEMPLATE = "template_04"
+TEMPLATE = "template_05"
 
 
 from telegram import (
@@ -336,23 +336,6 @@ async def done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     agent = context.user_data["agent"]
     agent.style = context.user_data["style"]
     agent.set_style()
-
-    # 수집한 데이터로 챗봇 생성
-    # sample = MyTravelAgent(
-    #     prompt_file=TEMPLATE,
-    #     model=MODEL,
-    #     user=update.effective_chat.id,
-    #     # **context.user_data["style"],
-    # )
-    # logger.info(f"sample chat style before: {sample.style}")
-    # sample.set_style()
-
-    # logger.info(f"sample chat style: {sample.style}")
-
-    # await context.bot.send_message(
-    #     chat_id=update.effective_chat.id,
-    #     text=f"{agent.response('우리 인사 나눌까? 소개 좀 부탁해', last_n=5)}",
-    # )
 
     return PLAN
 

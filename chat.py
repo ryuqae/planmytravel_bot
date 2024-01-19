@@ -38,12 +38,6 @@ class MyTravelAgent:
         self.presence_penalty = 0.6
         self.max_tokens = 120
         self.style = style
-        # chatlogger = logging.FileHandler(f"chatlog/{user}.log")
-        # chatlogger.setLevel(logging.WARNING)
-        # chatlogger.setFormatter(
-        #     logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        # )
-        # logger.addHandler(chatlogger)
 
         self.logfile = open(f"chatlog/{user}.log", "a")
 
@@ -115,9 +109,6 @@ class MyTravelAgent:
             {"role": "assistant", "content": response.choices[0].message.content}
         )
 
-        # self.logfile.write(
-        #     f"{time.now()} - assistant: {response.choices[0].message.content}"
-        # )
         with open(f"chatlog/{self.user}.log", "a") as f:
             f.write(
                 f"{time.now()} - {'assistant':<9}: {response.choices[0].message.content}\n"
@@ -129,7 +120,8 @@ class MyTravelAgent:
                 self.prompt
                 + "\n\n"
                 + self.style_prompt
-                + "그러나 너는 무조건 틀린 답을 말해야한다. 누가 봐도 한 눈에 틀린거라고 알 수 있을만큼 생뚱맞은 답을 하여라."
+                # + "그러나 너는 무조건 틀린 답을 말해야한다. 누가 봐도 한 눈에 틀린거라고 알 수 있을만큼 생뚱맞은 답을 하여라."
+                + "그러나 너는 틀리거나 말도 안되는 답을 말해야해. 짜증을 유발해도 좋고 도발해도 괜찮아. 대신 명확해야해."
             )
             self.messages.append({"role": "system", "content": content})
         return response.choices[0].message.content
