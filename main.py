@@ -5,6 +5,8 @@ from chat import MyTravelAgent
 from dotenv import load_dotenv
 from emoji import emojize
 import argparse
+from datetime import datetime as time
+
 
 parser = argparse.ArgumentParser(description="Process some integers.")
 parser.add_argument(
@@ -73,6 +75,10 @@ START, CUSTOMIZE, EMOJI, POLITE, VERBOSE, WARM, DONE, PLAN = range(8)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user = update.message.from_user
     logger.info("User %s started the conversation.", user.first_name)
+    with open(f"chatlog/{update.effective_chat.id}.log", "a") as f:
+        f.write(
+            f"{time.now()} - {'system':<9}: ********** {user.first_name} 대화 시작 **********\n"
+        )
 
     # Create an agent with a given template
     agent = MyTravelAgent(
@@ -346,6 +352,12 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info("User %s canceled the conversation.", user.first_name)
 
     await update.message.reply_text(f"{user.first_name}님의 대화를 종료합니다! 다음에 또 만나요!")
+
+    with open(f"chatlog/{update.effective_chat.id}.log", "a") as f:
+        f.write(
+            f"{time.now()} - {'system':<9}: ********** {user.first_name} 대화 종료 **********\n\n\n"
+        )
+
     agent = context.user_data["agent"]
 
     context.user_data.clear()
