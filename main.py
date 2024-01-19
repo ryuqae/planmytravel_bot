@@ -339,9 +339,6 @@ async def done(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         text=f"{user.first_name}님의 챗봇이 완성되었습니다!{good} 이제 저와 대화를 시작해볼까요?{party}",
     )
     logger.info(context.user_data)
-    agent = context.user_data["agent"]
-    agent.style = context.user_data["style"]
-    agent.set_style()
 
     return PLAN
 
@@ -370,6 +367,8 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 @send_typing_action
 async def response(update: Update, context: ContextTypes.DEFAULT_TYPE):
     agent = context.user_data["agent"]
+    agent.style = context.user_data["style"]
+    agent.set_style()
 
     logger.info(agent.style)
 

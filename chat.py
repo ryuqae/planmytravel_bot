@@ -15,7 +15,6 @@ logging.basicConfig(
 )
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
-# logger.propagate = False
 
 
 class MyTravelAgent:
@@ -36,7 +35,7 @@ class MyTravelAgent:
         self.top_p = 1
         self.frequency_penalty = 0.0
         self.presence_penalty = 0.6
-        self.max_tokens = 120
+        self.max_tokens = 140
         self.style = style
 
         self.logfile = open(f"chatlog/{user}.log", "a")
@@ -76,7 +75,7 @@ class MyTravelAgent:
             # else "\n- 대답은 최대한 냉정하게 해주세요.\n\n"
             else "\n- 대답은 최대한 차갑고 싸늘한 말투로 말해주세요.\n\n"
         )
-        content = self.prompt + "\n\n" + self.style_prompt
+        content = f"{self.prompt}\n\n{self.style_prompt}\n\n단, 토큰 수 {self.max_tokens}는 절대로 넘지 말아야해."
         self.messages.append({"role": "system", "content": content})
         logger.info(f"Style prompt: {self.style_prompt}")
 
@@ -89,10 +88,8 @@ class MyTravelAgent:
         self.messages.append({"role": "user", "content": content})
 
         logger.info(self.messages)
-        # logger.warning({"role": "user", "content": content})
         with open(f"chatlog/{self.user}.log", "a") as f:
             f.write(f"{time.now()} - {'user':<9}: {content}\n")
-        # self.logfile.write(f"{time.now()} - user: {content}")
 
         response = openai.chat.completions.create(
             model=model,
@@ -121,7 +118,7 @@ class MyTravelAgent:
                 + "\n\n"
                 + self.style_prompt
                 # + "그러나 너는 무조건 틀린 답을 말해야한다. 누가 봐도 한 눈에 틀린거라고 알 수 있을만큼 생뚱맞은 답을 하여라."
-                + f"그러나 너는 틀리거나 말도 안되는 답을 말해야해. 짜증을 유발해도 좋고 도발해도 괜찮아. 대신 명확해야해. 토큰수 {self.max_tokens}는 절대로 넘지 말아야해."
+                + f"그러나 너는 틀리거나 말도 안되는 답을 말해야해. 짜증을 유발해도 좋고 도발해도 괜찮아. 대신 명확해야해. 토큰 수 {self.max_tokens}는 절대로 넘지 말아야해."
             )
             self.messages.append({"role": "system", "content": content})
         return response.choices[0].message.content
